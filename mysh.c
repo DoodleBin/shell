@@ -13,6 +13,7 @@
 int main(int argc, char** argv) {
   char* line = NULL;     // Pointer that will hold the line we read in
   size_t line_size = 0;  // The number of bytes available in line
+  //char*[] args = new char*[MAX_ARGS + 1];
 
   // Loop forever
   while (true) {
@@ -33,9 +34,39 @@ int main(int argc, char** argv) {
       }
     }
 
+
     // TODO: Execute the command instead of printing it below
-    printf("Received command: %s\n", line);
+  int counter = 0;
+  char** args = malloc(MAX_ARGS*sizeof(char*));
+  char* cur_arg;
+    for (int i = 1; (cur_arg = strsep(&argv[i], " ")) != NULL; i++) {
+      args[i] = cur_arg;
+    }
+    args[counter + 1] = NULL;
+    //forking and executing the command
+  printf("Received command: %s\n", line);
+
+
+  int curr_process = 0;
+  while (curr_process < counter) {
+    pid_t child_id = fork();
+    if (child_id == 0) {
+      execvp(args[curr_process], args);
+      perror("exec failed");
+      exit(EXIT_FAILURE);
+    } else if (child_id > 0) {
+      int status;
+      wait(&status);
+      printf("%s exited with status %d\n", args[curr_process], WEXITSTATUS(status));
+    } else {
+      perror("fork failed");
+      exit(EXIT_FAILURE);
+    }
+    curr_process++;
   }
+  }
+
+
 
   // If we read in at least one line, free this space
   if (line != NULL) {
