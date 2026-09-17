@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 // This is the maximum number of arguments your shell should handle for one command
 #define MAX_ARGS 128
@@ -53,11 +54,11 @@ int main(int argc, char** argv) {
     } else if (child_id > 0) {
       int status;
     wait(&status);
-    printf("%d exited with status %d\n", args[curr_process], WEXITSTATUS(status));
-  } else {
-    perror("fork failed");
-    exit(EXIT_FAILURE);
-  }
+      printf("%s exited with status %d\n", args[curr_process], WEXITSTATUS(status));
+    } else {
+      perror("fork failed");
+      exit(EXIT_FAILURE);
+    }
   curr_process++;
 }
 
@@ -65,7 +66,7 @@ int main(int argc, char** argv) {
     int counter = 0;
     char** args = malloc(MAX_ARGS * sizeof(char*));
     char* cur_arg;
-    for (int i = 1; (cur_arg = strsep(&argv[i], " ")) != NULL; i++) {
+    for (int i = 1; (cur_arg = strsep(&line, " ")) != NULL; i++) {
       args[i] = cur_arg;
     }
     args[counter + 1] = NULL;
