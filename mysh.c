@@ -8,68 +8,75 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-// This is the maximum number of arguments your shell should handle for one command
+// Maximum number of arguments for one command
 #define MAX_ARGS 128
 
 int main(int argc, char** argv) {
-  char* line = NULL;     // Pointer that will hold the line we read in
-  size_t line_size = 0;  // The number of bytes available in line
-  // char*[] args = new char*[MAX_ARGS + 1];
+  char* line = NULL;     // Pointer holding the line read in
+  size_t line_size = 0;  // Bytes available in line
 
   // Loop forever
   while (true) {
     // Print the shell prompt
     printf("$ ");
 
-    // Get a line of stdin, storing the string pointer in line
+    // Get a line of stdin
     if (getline(&line, &line_size, stdin) == -1) {
       if (errno == EINVAL) {
         perror("Unable to read command line");
         exit(2);
       } else {
-        // Must have been end of file (ctrl+D)
         printf("\nShutting down...\n");
-
-        // Exit the infinite loop
         break;
       }
     }
 
-    // TODO: Execute the command instead of printing it below
-    int counter = 0;
-    char* token = line;
-    char** args = malloc((MAX_ARGS + 1)* sizeof(char*));
-    char* cur_arg;
-    for (int i = 0; (cur_arg = strsep(&token, " ")) != NULL; i++) {
-      if (*cur_arg != '\0') {
-        counter++;
-        args[i] = cur_arg;
-      }
-    }
-    args[counter] = NULL;
-    // forking and executing the command
-    printf("Received command: %s\n", line);
+    char *linePointer = line;
+    char *currSentence;
 
-    int curr_process = 0;
-    while (curr_process < counter) {
+    //semicolon splitting
+    while ((currSentence = strsep(&linePointer, ";&")) != NULL) {
+      char** args = malloc((MAX_ARGS + 1) * sizeof(char*));
+      int counter = 0;
+      char* currWord;
+
+      // spaces or newline splitting
+      while ((currWord = strsep(&currSentence, " \n")) != NULL) {
+        if (*currWord != '\0') {
+          args[counter] = currWord;
+          counter++;
+        }
+      }
+
+      //sets our last element to null
+      args[counter] = NULL;
+
+      // If only "enter" was pressed
+      if (counter == 0) {
+        free(args);
+        continue;
+      }
+
+      // Execute command
       pid_t child_id = fork();
       if (child_id == 0) {
-        execvp(args[curr_process], args);
+        execvp(args[0], args);
         perror("exec failed");
         exit(EXIT_FAILURE);
       } else if (child_id > 0) {
         int status;
         wait(&status);
-        printf("%s exited with status %d\n", args[curr_process], WEXITSTATUS(status));
+        printf("%s exited with status %d\n", args[0], WEXITSTATUS(status));
       } else {
         perror("fork failed");
+        free(args);
         exit(EXIT_FAILURE);
       }
-      curr_process++;
+
+      free(args);
     }
   }
 
-  // If we read in at least one line, free this space
   if (line != NULL) {
     free(line);
   }
