@@ -35,13 +35,27 @@ int main(int argc, char** argv) {
     char *currSentence;
 
     //semicolon splitting
-    while ((currSentence = strsep(&linePointer, ";&")) != NULL) {
+    while ((currSentence = strsep(&linePointer, ";")) != NULL) {
+
+      char *sentencePointer = currSentence;
+      char *ampChecker;
+
+      while ((ampChecker = strsep(&sentencePointer, "&")) != NULL) {
+
+        bool runInBackground = false;
+
+        if(sentencePointer != NULL){
+          runInBackground = true;
+        } else {
+          runInBackground = false;
+        }
+
       char** args = malloc((MAX_ARGS + 1) * sizeof(char*));
       int counter = 0;
       char* currWord;
 
       // spaces or newline splitting
-      while ((currWord = strsep(&currSentence, " \n")) != NULL) {
+      while ((currWord = strsep(&ampChecker, " \n")) != NULL) {
         if (*currWord != '\0') {
           args[counter] = currWord;
           counter++;
@@ -64,9 +78,16 @@ int main(int argc, char** argv) {
         perror("exec failed");
         exit(EXIT_FAILURE);
       } else if (child_id > 0) {
-        int status;
-        wait(&status);
-        printf("%s exited with status %d\n", args[0], WEXITSTATUS(status));
+        if (!runInBackground) {
+          int status;
+          wait(&status);
+          printf("%s exited with status %d\n", args[0], WEXITSTATUS(status));
+        } else {
+          printf("%s is running in the background\n", args[0]);
+          int status;
+          wait(&status);
+          printf("%s exited with status %d\n", args[0], WEXITSTATUS(status));
+        }
       } else {
         perror("fork failed");
         free(args);
@@ -76,6 +97,7 @@ int main(int argc, char** argv) {
       free(args);
     }
   }
+}
 
   if (line != NULL) {
     free(line);
